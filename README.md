@@ -174,7 +174,7 @@ Import `postman/Event-Ticket-Booking.postman_collection.json` into Postman.
 
 MIT
 
-## College Project Features
+## Project Features
 
 - Single administrator account is created automatically; public registration always creates USER accounts.
 - Event status is maintained automatically as UPCOMING, SOLD_OUT, or EXPIRED.
