@@ -170,10 +170,6 @@ Import `postman/Event-Ticket-Booking.postman_collection.json` into Postman.
 - User ID extracted from JWT (never accepted in booking requests)
 - CORS configured for frontend origin
 
-## License
-
-MIT
-
 ## Project Features
 
 - Single administrator account is created automatically; public registration always creates USER accounts.
