@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,7 +34,15 @@ public class EventService {
     @Transactional
     public List<EventResponseDTO> getAllEvents() {
         List<Event> events = eventRepository.findAll();
-        events.forEach(this::refreshStatus);
+
+        events.forEach(event -> {
+            EventStatus newStatus = calculateStatus(event);
+
+            if (event.getStatus() != newStatus) {
+                event.setStatus(newStatus);
+            }
+        });
+
         return events.stream()
                 .map(dtoMapper::toEventResponse)
                 .collect(Collectors.toList());
@@ -108,10 +118,31 @@ public class EventService {
     }
 
     public List<EventSalesDTO> getEventSales() {
-        return eventRepository.findAll().stream()
+
+        List<Event> events = eventRepository.findAll();
+
+        List<Object[]> results = bookingRepository.getTicketsSoldByEvent(
+                BookingStatus.BOOKED);
+
+        Map<Long, Long> ticketsSoldMap = new HashMap<>();
+
+        for (Object[] row : results) {
+            Long eventId = (Long) row[0];
+            Long ticketsSold = ((Number) row[1]).longValue();
+
+            ticketsSoldMap.put(eventId, ticketsSold);
+        }
+
+        return events.stream()
                 .map(event -> {
-                    Long ticketsSold = bookingRepository.getTicketsSold(event.getId(), BookingStatus.BOOKED);
-                    BigDecimal revenue = event.getTicketPrice().multiply(BigDecimal.valueOf(ticketsSold));
+
+                    Long ticketsSold = ticketsSoldMap.getOrDefault(
+                            event.getId(), 0L);
+
+                    BigDecimal revenue = event.getTicketPrice()
+                            .multiply(
+                                    BigDecimal.valueOf(ticketsSold));
+
                     return EventSalesDTO.builder()
                             .eventId(event.getId())
                             .eventName(event.getEventName())
@@ -147,14 +178,22 @@ public class EventService {
     }
 
     private void refreshStatus(Event event) {
+        event.setStatus(calculateStatus(event));
+    }
+
+    private EventStatus calculateStatus(Event event) {
         LocalDateTime now = LocalDateTime.now();
-        if (event.getEventDate() != null && !now.isBefore(event.getEventDate())) {
-            event.setStatus(EventStatus.EXPIRED);
-        } else if (event.getAvailableSeats() != null && event.getAvailableSeats() == 0) {
-            event.setStatus(EventStatus.SOLD_OUT);
-        } else {
-            event.setStatus(EventStatus.UPCOMING);
+
+        if (event.getEventDate() != null
+                && !now.isBefore(event.getEventDate())) {
+            return EventStatus.EXPIRED;
         }
+
+        if (event.getAvailableSeats() != null
+                && event.getAvailableSeats() == 0) {
+            return EventStatus.SOLD_OUT;
+        }
+
+        return EventStatus.UPCOMING;
     }
 }
-

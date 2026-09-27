@@ -18,8 +18,17 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByUserEmail(String email);
 
     @Query("SELECT COALESCE(SUM(b.ticketsBooked), 0) FROM Booking b " +
-           "WHERE b.event.id = :eventId AND b.status = :status")
+            "WHERE b.event.id = :eventId AND b.status = :status")
     Long getTicketsSold(@Param("eventId") Long eventId, @Param("status") BookingStatus status);
+
+    @Query("""
+            SELECT b.event.id, COALESCE(SUM(b.ticketsBooked), 0)
+            FROM Booking b
+            WHERE b.status = :status
+            GROUP BY b.event.id
+            """)
+    List<Object[]> getTicketsSoldByEvent(
+            @Param("status") BookingStatus status);
 
     Optional<Booking> findByBookingReference(String bookingReference);
 
